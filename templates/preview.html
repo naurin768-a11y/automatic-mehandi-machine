@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview — {{ design | replace('_',' ') | title }}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg:     #fdf6f0;
+  --panel:  #fff8f4;
+  --rose:   #d47a7a;
+  --rosebg: #fce8e8;
+  --sage:   #6aaa62;
+  --sagebg: #e8f4e4;
+  --amber:  #c89040;
+  --amberbg:#fdf4e0;
+  --red:    #cc4444;
+  --redbg:  #fce8ec;
+  --blue:   #4a7fc1;
+  --bluebg: #e8f0fc;
+  --text:   #5a3a3a;
+  --text2:  #8a6060;
+  --text3:  #b89090;
+  --border: rgba(200,140,130,0.16);
+  --shadow: rgba(180,120,110,0.07);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background:var(--bg);
+  font-family:'Jost',sans-serif;
+  color:var(--text);
+  height:100vh; overflow:hidden;
+  display:flex; flex-direction:column;
+}
+
+/* ── Topbar ─────────────────────────── */
+.topbar {
+  display:flex; align-items:center;
+  padding:11px 20px; background:var(--panel);
+  border-bottom:1px solid var(--border);
+  gap:14px; flex-shrink:0;
+  box-shadow:0 2px 12px var(--shadow);
+}
+.back {
+  display:flex; align-items:center; gap:6px;
+  color:var(--rose); text-decoration:none;
+  font-size:0.75rem; font-weight:500; letter-spacing:1px;
+  padding:6px 14px;
+  border:1px solid rgba(212,122,122,0.25);
+  border-radius:20px; background:var(--rosebg);
+  transition:all 0.2s;
+}
+.back:hover { background:#f8d8d8; border-color:var(--rose); }
+.topbar-title {
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.1rem; font-weight:600;
+  color:var(--text); letter-spacing:1px;
+}
+.topbar-design {
+  margin-left:auto;
+  font-family:'Cormorant Garamond',serif;
+  font-size:0.9rem; font-style:italic; color:var(--text3);
+}
+
+/* ── Layout ─────────────────────────── */
+.main {
+  display:grid;
+  grid-template-columns:1fr 316px;
+  flex:1; overflow:hidden;
+}
+
+/* ── Camera ─────────────────────────── */
+.cam-wrap {
+  position:relative;
+  background:#160a0a; overflow:hidden;
+}
+.cam-wrap::before {
+  content:'✿  Loading camera…';
+  position:absolute; inset:0; z-index:1;
+  display:flex; align-items:center; justify-content:center;
+  color:rgba(253,246,240,0.3); font-size:0.78rem;
+  letter-spacing:3px; font-family:'Jost',sans-serif;
+  pointer-events:none;
+}
+#videoFeed {
+  width:100%; height:100%; object-fit:cover;
+  position:relative; z-index:2;
+}
+.cam-wrap::after {
+  content:''; position:absolute; inset:0; z-index:3;
+  box-shadow:inset 0 0 60px rgba(0,0,0,0.25);
+  pointer-events:none;
+}
+
+/* Corner decorations */
+.cdeco { position:absolute; z-index:10; pointer-events:none; opacity:0.5; }
+.cdeco.tl{top:14px;left:14px;} .cdeco.tr{top:14px;right:14px;}
+.cdeco.bl{bottom:14px;left:14px;} .cdeco.br{bottom:14px;right:14px;}
+.cdeco svg{width:26px;height:26px;}
+
+/* Badges */
+.badges {
+  position:absolute; top:14px; left:50%;
+  transform:translateX(-50%);
+  display:flex; gap:8px; z-index:10;
+}
+.badge {
+  padding:5px 14px; border-radius:20px;
+  font-size:0.68rem; font-weight:500; letter-spacing:1.5px;
+  backdrop-filter:blur(12px); transition:all 0.35s; white-space:nowrap;
+  box-shadow:0 2px 8px rgba(0,0,0,0.12);
+}
+.badge-hand {
+  background:rgba(255,248,244,0.88);
+  border:1px solid rgba(200,140,130,0.3); color:var(--text3);
+}
+.badge-hand.on {
+  background:rgba(232,244,232,0.95);
+  border-color:rgba(106,170,98,0.6); color:var(--sage);
+  box-shadow:0 2px 12px rgba(106,170,98,0.2);
+}
+.badge-scale {
+  background:rgba(255,248,244,0.88);
+  border:1px solid rgba(200,140,130,0.3); color:var(--rose);
+  box-shadow:0 2px 8px rgba(212,122,122,0.15);
+}
+
+/* Captured overlay */
+#capOverlay { position:absolute; inset:0; display:none; z-index:20; }
+#capOverlay img { width:100%; height:100%; object-fit:cover; }
+.cap-ribbon {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(transparent,rgba(253,246,240,0.92));
+  padding:30px 20px 18px; text-align:center;
+}
+.cap-ribbon-txt {
+  font-family:'Cormorant Garamond',serif;
+  font-size:1rem; font-style:italic; color:var(--text2);
+}
+
+/* ── Panel ──────────────────────────── */
+.panel {
+  background:var(--panel);
+  border-left:1px solid var(--border);
+  display:flex; flex-direction:column;
+  overflow-y:auto; overflow-x:hidden;
+}
+.psec { padding:15px 18px; border-bottom:1px solid var(--border); }
+.plabel {
+  font-size:0.6rem; font-weight:500;
+  letter-spacing:4px; color:var(--text3);
+  text-transform:uppercase; margin-bottom:11px;
+  display:flex; align-items:center; gap:8px;
+}
+.plabel::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* Steps */
+.steps-row { display:flex; align-items:center; gap:5px; padding:2px 0; }
+.sdot {
+  width:27px; height:27px; border-radius:50%;
+  border:1.5px solid var(--border); background:white;
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.65rem; font-weight:500; color:var(--text3);
+  flex-shrink:0; transition:all 0.4s;
+}
+.sdot.active { background:var(--rosebg); border-color:var(--rose); color:var(--rose); box-shadow:0 0 0 3px rgba(212,122,122,0.1); }
+.sdot.done   { background:var(--sagebg); border-color:var(--sage); color:var(--sage); }
+.sline       { flex:1; height:1.5px; background:var(--border); transition:background 0.4s; }
+.sline.done  { background:var(--sage); }
+.slabs       { display:flex; justify-content:space-between; margin-top:5px; }
+.slab        { font-size:0.62rem; color:var(--text3); font-weight:300; white-space:nowrap; }
+
+/* Hand card */
+.hand-card {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:12px;
+  background:white; border:1.5px solid var(--border);
+  margin-bottom:10px; transition:all 0.4s;
+}
+.hand-card.on { background:var(--sagebg); border-color:rgba(106,170,98,0.35); }
+.hand-icon    { font-size:1.3rem; flex-shrink:0; }
+.hand-title   { font-size:0.78rem; font-weight:500; color:var(--text2); transition:color 0.4s; }
+.hand-card.on .hand-title { color:var(--sage); }
+.hand-sub     { font-size:0.7rem; color:var(--text3); font-weight:300; margin-top:2px; }
+
+/* Pulse animation when hand locked */
+@keyframes pulse-border {
+  0%,100%{ box-shadow:0 0 0 0 rgba(106,170,98,0.4); }
+  50%{ box-shadow:0 0 0 6px rgba(106,170,98,0); }
+}
+.hand-card.on { background:var(--sagebg); border-color:rgba(106,170,98,0.35); animation:pulse-border 2s infinite; }
+
+/* Design preview strip */
+.design-strip {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 12px; border-radius:10px;
+  background:white; border:1px solid var(--border);
+  margin-bottom:10px;
+}
+.design-thumb {
+  width:38px; height:38px; border-radius:8px;
+  background:var(--rosebg); border:1px solid var(--border);
+  object-fit:contain; padding:3px;
+}
+.design-name-sm {
+  font-family:'Cormorant Garamond',serif;
+  font-size:0.92rem; font-weight:600; color:var(--text);
+}
+.design-hint {
+  font-size:0.68rem; color:var(--text3); margin-top:1px;
+}
+.tog-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 10px; border-radius:10px;
+  background:white; border:1px solid var(--border);
+}
+.tog-label { font-size:0.7rem; font-weight:400; color:var(--text2); }
+.toggle { position:relative; width:38px; height:20px; }
+.toggle input { opacity:0; width:0; height:0; }
+.ttrack {
+  position:absolute; cursor:pointer; inset:0;
+  background:rgba(180,130,120,0.12);
+  border-radius:20px; border:1px solid var(--border); transition:all 0.3s;
+}
+.ttrack::before {
+  content:''; position:absolute;
+  width:14px; height:14px; left:2px; top:2px;
+  background:var(--text3); border-radius:50%; transition:all 0.3s;
+}
+input:checked + .ttrack { background:var(--sagebg); border-color:var(--sage); }
+input:checked + .ttrack::before { background:var(--sage); transform:translateX(18px); }
+
+/* Size hero */
+.size-hero { text-align:center; padding:4px 0 10px; }
+.size-big {
+  font-family:'Cormorant Garamond',serif;
+  font-size:3rem; font-weight:600;
+  color:var(--rose); line-height:1; transition:all 0.2s;
+}
+.size-big.pop { animation:pop 0.25s ease; }
+@keyframes pop {
+  0%{transform:scale(1);} 50%{transform:scale(1.12);color:#e8a050;} 100%{transform:scale(1);}
+}
+.size-unit {
+  font-size:0.62rem; font-weight:500;
+  letter-spacing:4px; color:var(--text3);
+  text-transform:uppercase; margin-top:2px;
+}
+.size-mm {
+  margin-top:6px; display:inline-block;
+  padding:3px 12px; background:var(--rosebg);
+  border-radius:10px; font-size:0.72rem; color:var(--rose); font-weight:500;
+}
+
+/* Slider */
+#slider {
+  width:100%; -webkit-appearance:none;
+  height:3px; border-radius:3px; outline:none;
+  cursor:pointer; margin:12px 0 6px;
+  background:linear-gradient(90deg,
+    var(--rose) var(--pct,50%),
+    rgba(200,160,160,0.15) var(--pct,50%));
+}
+#slider::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  width:20px; height:20px; border-radius:50%;
+  background:white; border:2.5px solid var(--rose);
+  box-shadow:0 2px 8px rgba(212,122,122,0.3);
+  cursor:pointer; transition:transform 0.2s;
+}
+#slider::-webkit-slider-thumb:hover { transform:scale(1.2); }
+.slider-ends { display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text3); font-family:'Share Tech Mono',monospace; }
+
+/* Adj buttons */
+.adj { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-top:10px; }
+.adj-btn {
+  padding:9px 4px; border-radius:10px;
+  border:1.5px solid var(--border); background:white;
+  color:var(--rose); font-size:1rem; font-weight:300;
+  cursor:pointer; transition:all 0.2s; text-align:center;
+}
+.adj-btn:hover { background:var(--rosebg); border-color:var(--rose); transform:translateY(-2px); box-shadow:0 4px 12px var(--shadow); }
+.adj-btn:active { transform:translateY(0); }
+
+/* Keyboard hints */
+.kb-hints { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+.kbh { display:inline-flex; align-items:center; gap:4px; font-size:0.62rem; color:var(--text3); }
+.key {
+  padding:2px 5px; background:white;
+  border:1px solid var(--border); border-radius:4px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.58rem; color:var(--text2);
+  box-shadow:0 1.5px 0 var(--border);
+}
+
+/* ── Action buttons ──────────────────── */
+.act-btn {
+  width:100%; padding:12px 16px; border-radius:12px;
+  border:1.5px solid; font-family:'Jost',sans-serif;
+  font-size:0.8rem; font-weight:500; letter-spacing:1.5px;
+  cursor:pointer; transition:all 0.3s; margin-bottom:8px;
+  display:none;
+}
+.btn-cap {
+  display:block;
+  background:var(--rosebg); border-color:rgba(212,122,122,0.4); color:var(--rose);
+}
+.btn-cap:hover    { background:#f8d8d8; border-color:var(--rose); box-shadow:0 6px 20px rgba(212,122,122,0.2); transform:translateY(-2px); }
+.btn-cap:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+
+.btn-start  { background:var(--sagebg);  border-color:rgba(106,170,98,0.4); color:var(--sage); }
+.btn-start:hover  { background:#d8ecd8; border-color:var(--sage); transform:translateY(-2px); }
+
+.btn-stop   { background:var(--amberbg); border-color:rgba(200,144,64,0.4); color:var(--amber); }
+.btn-stop:hover   { background:#f0e4b8; border-color:var(--amber); transform:translateY(-2px); }
+
+.btn-resume { background:var(--sagebg);  border-color:rgba(106,170,98,0.4); color:var(--sage); }
+.btn-resume:hover { background:#d8ecd8; border-color:var(--sage); transform:translateY(-2px); }
+
+.btn-reset  { background:var(--bluebg);  border-color:rgba(74,127,193,0.3); color:var(--blue); }
+.btn-reset:hover  { background:#d8e8f8; border-color:var(--blue); transform:translateY(-2px); }
+
+/* Status card */
+#statusCard {
+  display:none;
+  background:white; border:1px solid var(--border);
+  border-radius:10px; padding:10px 12px; margin-bottom:8px;
+}
+.status-line {
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.64rem; color:var(--text3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.7;
+}
+.status-badge {
+  display:inline-block; font-size:0.6rem; font-weight:500;
+  letter-spacing:2px; padding:2px 10px; border-radius:8px; margin-bottom:5px;
+}
+.status-badge.running { background:var(--sagebg);  color:var(--sage); }
+.status-badge.stopped { background:var(--amberbg); color:var(--amber); }
+.status-badge.done    { background:var(--sagebg);  color:var(--sage); }
+
+/* Progress */
+.prog-wrap { margin-top:8px; }
+.prog-label { display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text3); margin-bottom:6px; font-family:'Share Tech Mono',monospace; }
+.prog-track { height:5px; background:rgba(200,160,160,0.15); border-radius:5px; overflow:hidden; }
+.prog-fill  { height:100%; width:0%; background:linear-gradient(90deg,var(--rose),var(--sage)); border-radius:5px; transition:width 0.6s ease; }
+
+/* Message */
+.msg { display:none; margin-top:10px; padding:10px 14px; border-radius:10px; font-size:0.75rem; font-weight:400; line-height:1.5; }
+.msg-info    { background:var(--amberbg); border:1px solid rgba(200,144,64,0.25);  color:var(--amber); }
+.msg-success { background:var(--sagebg);  border:1px solid rgba(106,170,98,0.3);   color:var(--sage); }
+.msg-error   { background:var(--redbg);   border:1px solid rgba(204,68,68,0.25);   color:var(--red); }
+
+/* G-code preview */
+.gc-box {
+  display:none; background:#fff8f4;
+  border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; font-family:'Share Tech Mono',monospace;
+  font-size:0.67rem; color:var(--text3);
+  max-height:100px; overflow-y:auto; white-space:pre; line-height:1.8;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="back">← Back</a>
+  <div class="topbar-title">Live Preview</div>
+  <div class="topbar-design">✿ {{ design | replace('_',' ') }}</div>
+</div>
+
+<div class="main">
+
+  <div class="cam-wrap">
+    <div class="cdeco tl"><svg viewBox="0 0 26 26" fill="none"><path d="M2 2 L13 2 M2 2 L2 13" stroke="rgba(253,246,240,0.6)" stroke-width="1.5"/><circle cx="2" cy="2" r="2" fill="rgba(253,246,240,0.6)"/></svg></div>
+    <div class="cdeco tr"><svg viewBox="0 0 26 26" fill="none"><path d="M24 2 L13 2 M24 2 L24 13" stroke="rgba(253,246,240,0.6)" stroke-width="1.5"/><circle cx="24" cy="2" r="2" fill="rgba(253,246,240,0.6)"/></svg></div>
+    <div class="cdeco bl"><svg viewBox="0 0 26 26" fill="none"><path d="M2 24 L13 24 M2 24 L2 13" stroke="rgba(253,246,240,0.6)" stroke-width="1.5"/><circle cx="2" cy="24" r="2" fill="rgba(253,246,240,0.6)"/></svg></div>
+    <div class="cdeco br"><svg viewBox="0 0 26 26" fill="none"><path d="M24 24 L13 24 M24 24 L24 13" stroke="rgba(253,246,240,0.6)" stroke-width="1.5"/><circle cx="24" cy="24" r="2" fill="rgba(253,246,240,0.6)"/></svg></div>
+
+    <div class="badges">
+      <div class="badge badge-hand" id="handBadge">🖐 Searching for hand...</div>
+      <div class="badge badge-scale" id="scaleBadge">Scale: 1.00×</div>
+    </div>
+
+    <!-- Video never gets src swapped — scale changes go via /set_scale -->
+    <img id="videoFeed" src="/video_feed?design={{ design }}&scale=1.0" alt="Camera Feed">
+
+    <div id="capOverlay">
+      <img id="capImg" src="" alt="Captured">
+      <div class="cap-ribbon">
+        <div class="cap-ribbon-txt" id="capRibbonTxt">✿ Frame captured — review and start the plotter</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+
+    <!-- Steps -->
+    <div class="psec">
+      <div class="plabel">Steps</div>
+      <div class="steps-row">
+        <div class="sdot active" id="sd1">1</div>
+        <div class="sline" id="sl1"></div>
+        <div class="sdot" id="sd2">2</div>
+        <div class="sline" id="sl2"></div>
+        <div class="sdot" id="sd3">3</div>
+      </div>
+      <div class="slabs">
+        <span class="slab">Preview</span>
+        <span class="slab">Capture</span>
+        <span class="slab">Print</span>
+      </div>
+    </div>
+
+    <!-- Active design -->
+    <div class="psec">
+      <div class="plabel">Selected Design</div>
+      <div class="design-strip">
+        <img class="design-thumb" src="/static/designs/{{ design }}.png"
+             onerror="this.style.display='none'" alt="{{ design }}">
+        <div>
+          <div class="design-name-sm">{{ design | replace('_',' ') | title }}</div>
+          <div class="design-hint">Design shown on camera in real-time</div>
+        </div>
+      </div>
+    </div>
+    <div class="psec">
+      <div class="plabel">Hand Detection</div>
+      <div class="hand-card" id="handCard">
+        <div class="hand-icon">🖐</div>
+        <div>
+          <div class="hand-title" id="handTitle">Searching...</div>
+          <div class="hand-sub"   id="handSub">Place palm facing camera</div>
+        </div>
+      </div>
+      <div class="tog-row">
+        <span class="tog-label">Auto-scale from palm size</span>
+        <label class="toggle">
+          <input type="checkbox" id="autoTog" checked onchange="toggleAuto()">
+          <span class="ttrack"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Design Size / Manual Resize -->
+    <div class="psec">
+      <div class="plabel">Design Size</div>
+      <div class="size-hero">
+        <div class="size-big" id="sizeVal">1.00</div>
+        <div class="size-unit">scale</div>
+        <span class="size-mm" id="sizeMm">80 × 80 mm</span>
+      </div>
+      <input type="range" id="slider" min="0.3" max="2.0"
+             step="0.05" value="1.0" oninput="onSlider(this.value)">
+      <div class="slider-ends">
+        <span>0.3×</span><span>1.0×</span><span>2.0×</span>
+      </div>
+      <div class="adj">
+        <button class="adj-btn" onclick="adj(-0.2)" title="−0.2×">−−</button>
+        <button class="adj-btn" onclick="adj(-0.05)" title="−0.05×">−</button>
+        <button class="adj-btn" onclick="adj( 0.05)" title="+0.05×">+</button>
+        <button class="adj-btn" onclick="adj( 0.2)" title="+0.2×">++</button>
+      </div>
+      <div class="kb-hints">
+        <div class="kbh"><span class="key">←</span> smaller</div>
+        <div class="kbh"><span class="key">→</span> bigger</div>
+        <div class="kbh"><span class="key">⇧←</span> −0.2</div>
+        <div class="kbh"><span class="key">⇧→</span> +0.2</div>
+        <div class="kbh"><span class="key">R</span> reset 1×</div>
+        <div class="kbh"><span class="key">Space</span> capture</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="psec">
+      <div class="plabel">Actions</div>
+
+      <button class="act-btn btn-cap"    id="capBtn"    onclick="doCapture()">📸  Capture &amp; Generate G-Code</button>
+      <button class="act-btn btn-start"  id="startBtn"  onclick="doStart()">▶  Start Mehendi Plotter</button>
+      <button class="act-btn btn-stop"   id="stopBtn"   onclick="doStop()">⏸  Pause</button>
+      <button class="act-btn btn-resume" id="resumeBtn" onclick="doResume()">▶  Resume</button>
+      <button class="act-btn btn-reset"  id="resetBtn"  onclick="doReset()">↺  Reset &amp; Start Over</button>
+
+      <!-- Live status card -->
+      <div id="statusCard">
+        <span class="status-badge running" id="stateBadge">PRINTING</span>
+        <div class="status-line" id="statusLine">Waiting…</div>
+        <div class="prog-wrap">
+          <div class="prog-label"><span>Progress</span><span id="pct">0%</span></div>
+          <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+        </div>
+      </div>
+
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <!-- G-Code Preview -->
+    <div class="psec">
+      <div class="plabel">G-Code Preview</div>
+      <div class="gc-box" id="gcBox">Capture to generate G-code...</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const DESIGN  = "{{ design }}";
+let scale     = 1.0;
+let autoSc    = true;
+let captured  = false;
+let detTimer  = null;
+let pollTimer = null;
+
+// ── Init ──────────────────────────────────────────────────────────
+updateSize(1.0);
+startDetection();
+
+// ══════════════════════════════════════════════════════════════════
+//  SCALE — push to backend without restarting the video stream
+// ══════════════════════════════════════════════════════════════════
+async function pushScale() {
+  try {
+    await fetch('/set_scale', {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({ scale, design: DESIGN })
+    });
+  } catch(e) { /* ignore */ }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  HAND DETECTION BADGE  (polls every 1.5s)
+// ══════════════════════════════════════════════════════════════════
+function startDetection() {
+  if (detTimer) clearInterval(detTimer);
+  detTimer = setInterval(async () => {
+    if (captured) return;
+    try {
+      const r = await fetch('/detect_hand', { method:'POST' });
+      const d = await r.json();
+      const badge = document.getElementById('handBadge');
+      const card  = document.getElementById('handCard');
+      const title = document.getElementById('handTitle');
+      const sub   = document.getElementById('handSub');
+
+      if (d.detected) {
+        badge.textContent = '🌸 Hand Detected — Locked!';
+        badge.classList.add('on');
+        card.classList.add('on');
+        title.textContent = 'Hand locked — design fitted!';
+        sub.textContent   = `Scale: ${d.scale}×  ·  ${d.size_mm}mm`;
+
+        // Auto-scale: only update if difference is meaningful (>0.08)
+        // Smaller threshold caused constant slider jitter
+        if (autoSc && Math.abs(d.scale - scale) > 0.08) {
+          scale = d.scale;
+          updateSize(scale);
+          pushScale();
+        }
+      } else {
+        badge.textContent = '🖐 Searching...';
+        badge.classList.remove('on');
+        card.classList.remove('on');
+        title.textContent = 'Place palm flat, facing camera';
+        sub.textContent   = 'Design will scale automatically to your palm';
+      }
+    } catch(e) { /* ignore */ }
+  }, 1500);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SIZE CONTROLS
+// ══════════════════════════════════════════════════════════════════
+function updateSize(val) {
+  scale = Math.max(0.3, Math.min(2.0, parseFloat(parseFloat(val).toFixed(2))));
+  const el = document.getElementById('sizeVal');
+  el.textContent = scale.toFixed(2);
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  const mm = Math.round(80 * scale);
+  document.getElementById('sizeMm').textContent = `${mm} × ${mm} mm`;
+  const sl = document.getElementById('slider');
+  sl.value = scale;
+  sl.style.setProperty('--pct', ((scale - 0.3) / 1.7 * 100) + '%');
+  document.getElementById('scaleBadge').textContent = `Scale: ${scale.toFixed(2)}×`;
+}
+
+function onSlider(v) {
+  // Manual drag → disable auto-scale
+  autoSc = false;
+  document.getElementById('autoTog').checked = false;
+  updateSize(parseFloat(v));
+  pushScale();
+}
+
+function adj(d) {
+  autoSc = false;
+  document.getElementById('autoTog').checked = false;
+  updateSize(scale + d);
+  pushScale();
+}
+
+function toggleAuto() {
+  autoSc = document.getElementById('autoTog').checked;
+}
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown', e => {
+  if (captured) return;
+  if      (e.key === 'ArrowRight') { e.preventDefault(); adj(e.shiftKey ? 0.2 : 0.05); }
+  else if (e.key === 'ArrowLeft')  { e.preventDefault(); adj(e.shiftKey ?-0.2:-0.05); }
+  else if (e.key.toLowerCase() === 'r') { updateSize(1.0); autoSc=true; document.getElementById('autoTog').checked=true; pushScale(); }
+  else if (e.key === ' ')          { e.preventDefault(); doCapture(); }
+});
+
+// ── Step indicator ──
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('sd'+i).className =
+      'sdot' + (i < n ? ' done' : i === n ? ' active' : '');
+  });
+  [1,2].forEach(i => {
+    document.getElementById('sl'+i).className = 'sline' + (i < n ? ' done' : '');
+  });
+}
+
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+// ══════════════════════════════════════════════════════════════════
+//  CAPTURE
+// ══════════════════════════════════════════════════════════════════
+async function doCapture() {
+  if (captured) return;
+  const btn = document.getElementById('capBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳  Capturing...';
+  try {
+    const r = await fetch('/capture_frame', {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({ design: DESIGN, scale })
+    });
+    const ct = r.headers.get('content-type');
+    if (!r.ok || !ct || !ct.includes('application/json')) {
+      throw new Error('Server error — check Python console.');
+    }
+    const d = await r.json();
+    if (d.success) {
+      captured = true;
+      clearInterval(detTimer);
+      document.getElementById('capImg').src = d.frame + '?t=' + Date.now();
+      show('capOverlay');
+      document.getElementById('gcBox').style.display = 'block';
+      document.getElementById('gcBox').textContent = d.gcode_preview;
+      hide('capBtn');
+      show('startBtn');
+      document.getElementById('handBadge').textContent = `✅ Ready — ${d.design_size_mm}mm`;
+      showMsg(`G-code ready: ${d.gcode_lines} commands · ${d.design_size_mm}mm`, 'info');
+      setStep(2);
+    } else {
+      btn.disabled = false;
+      btn.textContent = '📸  Capture & Generate G-Code';
+      showMsg('Capture failed: ' + (d.error || 'Unknown'), 'error');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '📸  Capture & Generate G-Code';
+    showMsg('Error: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════════════════════════════
+async function doStart() {
+  const ok = confirm(
+    'Start the mehendi plotter?\n\n' +
+    '✅ Mehendi cone loaded?\n' +
+    '✅ Hand flat under plotter?\n' +
+    '✅ Cone 1–2mm above palm centre?\n' +
+    '✅ Plotter connected via USB?\n\n' +
+    'Click OK to begin printing.'
+  );
+  if (!ok) return;
+
+  hide('startBtn');
+  show('stopBtn');
+  show('statusCard');
+  hide('msg');
+  setStep(3);
+
+  try {
+    const r = await fetch('/start_plotter', { method:'POST' });
+    const d = await r.json();
+    if (d.success) {
+      showMsg('🌸 Printing… keep hand still!', 'info');
+      startPolling();
+    } else {
+      hide('stopBtn'); hide('statusCard');
+      show('startBtn');
+      showMsg('❌ ' + d.error, 'error');
+    }
+  } catch(e) {
+    hide('stopBtn'); hide('statusCard');
+    show('startBtn');
+    showMsg('❌ ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  STOP  — pauses at current line, saves position for resume
+// ══════════════════════════════════════════════════════════════════
+async function doStop() {
+  try {
+    const r = await fetch('/stop_plotter', { method:'POST' });
+    const d = await r.json();
+    if (d.success) {
+      hide('stopBtn');
+      show('resumeBtn');
+      show('resetBtn');
+      setStatusCard('stopped', '⏸ PAUSED', 'Paused — press Resume to continue from same position');
+      showMsg('⏸ Plotter paused. Press Resume to continue, or Reset to start over.', 'info');
+    }
+  } catch(e) { showMsg('❌ ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RESUME  — continues from exactly where it stopped (no retrace)
+// ══════════════════════════════════════════════════════════════════
+async function doResume() {
+  try {
+    const r = await fetch('/resume_plotter', { method:'POST' });
+    const d = await r.json();
+    if (d.success) {
+      hide('resumeBtn');
+      hide('resetBtn');
+      show('stopBtn');
+      setStatusCard('running', '▶ PRINTING', d.message || 'Resumed…');
+      showMsg('▶ Printing resumed from paused position.', 'info');
+      startPolling();   // re-arm polling in case it stopped
+    } else {
+      showMsg('❌ ' + (d.error || 'Could not resume.'), 'error');
+    }
+  } catch(e) { showMsg('❌ ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RESET  — aborts print, homes plotter, restores UI to step 1
+//            NO page reload required
+// ══════════════════════════════════════════════════════════════════
+async function doReset() {
+  const ok = confirm('Reset? This will abort the current print and return the plotter to home. You can then capture a new frame.');
+  if (!ok) return;
+
+  stopPolling();
+
+  const btn = document.getElementById('resetBtn');
+  btn.disabled    = true;
+  btn.textContent = '↺  Resetting…';
+
+  try { await fetch('/reset_plotter', { method:'POST' }); } catch(e) { /* best effort */ }
+
+  // ── Restore full UI to Step 1 ─────────────────────────────────
+  captured = false;
+
+  hide('stopBtn'); hide('resumeBtn'); hide('statusCard'); hide('msg'); hide('startBtn');
+
+  const capBtn = document.getElementById('capBtn');
+  capBtn.style.display  = 'block';
+  capBtn.disabled       = false;
+  capBtn.textContent    = '📸  Capture & Generate G-Code';
+
+  btn.disabled    = false;
+  btn.textContent = '↺  Reset & Start Over';
+  hide('resetBtn');
+
+  // Restore live camera feed
+  hide('capOverlay');
+  document.getElementById('capImg').src = '';
+  document.getElementById('capRibbonTxt').textContent = '✿ Frame captured — review and start the plotter';
+
+  // Clear G-code box
+  const gcBox = document.getElementById('gcBox');
+  gcBox.style.display = 'none';
+  gcBox.textContent   = 'Capture to generate G-code...';
+
+  // Reset progress
+  document.getElementById('progFill').style.width  = '0%';
+  document.getElementById('pct').textContent        = '0%';
+  document.getElementById('statusLine').textContent = 'Waiting…';
+
+  // Reset hand badges
+  const badge = document.getElementById('handBadge');
+  badge.textContent = '🖐 Searching for hand...';
+  badge.classList.remove('on');
+  document.getElementById('handCard').classList.remove('on');
+  document.getElementById('handTitle').textContent = 'Searching...';
+  document.getElementById('handSub').textContent   = 'Place palm facing camera';
+
+  // Re-enable auto-scale
+  autoSc = true;
+  document.getElementById('autoTog').checked = true;
+
+  setStep(1);
+  startDetection();   // restart hand detection polling
+
+  showMsg('↺ Reset complete — place your hand and capture again.', 'info');
+  show('msg');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  STATUS POLLING  (real-time progress from backend)
+// ══════════════════════════════════════════════════════════════════
+function startPolling() {
+  stopPolling();
+  pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch('/plotter_status');
+      const d = await r.json();
+
+      document.getElementById('progFill').style.width   = d.progress + '%';
+      document.getElementById('pct').textContent        = d.progress + '%';
+      document.getElementById('statusLine').textContent = d.msg || '…';
+
+      if (d.finished) {
+        stopPolling();
+        hide('stopBtn'); hide('resumeBtn');
+        show('resetBtn');
+        setStatusCard('done', '✅ COMPLETE', d.msg);
+        document.getElementById('handBadge').textContent = '🎉 Complete!';
+        showMsg('🎉 Mehendi printed successfully!', 'success');
+        return;
+      }
+
+      if (d.stopped) {
+        stopPolling();
+        setStatusCard('stopped', '⏸ PAUSED', d.msg);
+        return;
+      }
+
+      if (d.running) {
+        setStatusCard('running', '▶ PRINTING', d.msg);
+      }
+    } catch(e) { /* ignore transient */ }
+  }, 800);
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function setStatusCard(state, label, text) {
+  const badge = document.getElementById('stateBadge');
+  badge.textContent = label;
+  badge.className   = 'status-badge ' + state;
+  document.getElementById('statusLine').textContent = text || '…';
+  show('statusCard');
+}
+
+function showMsg(txt, type) {
+  const el = document.getElementById('msg');
+  el.textContent = txt;
+  el.className   = 'msg msg-' + type;
+  show('msg');
+}
+</script>
+</body>
+</html>
